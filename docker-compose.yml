@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: latam-edu-agent-backend:local
+    container_name: latam-edu-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////srv/data/db/latam_edu_agent.db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-latam-admin-dev}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
+      DATOS_GOV_CO_APP_TOKEN: ${DATOS_GOV_CO_APP_TOKEN:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
+      RAG_COLLECTION_NAME: ${RAG_COLLECTION_NAME:-latam_edu_documents}
+      RAG_CHUNK_SIZE: ${RAG_CHUNK_SIZE:-900}
+      RAG_CHUNK_OVERLAP: ${RAG_CHUNK_OVERLAP:-150}
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - ./data:/srv/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: latam-edu-agent-frontend:local
+    container_name: latam-edu-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    volumes:
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  frontend_node_modules:
